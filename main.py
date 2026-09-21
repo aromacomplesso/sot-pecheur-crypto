@@ -1,37 +1,73 @@
-# Modulo: main.py
-# Orchestrazione della setacciatura massiva e salvataggio dei profili ottimali
-
 import heapq
-from itertools import product
-from crypto import decifra_segmento, ALFABETO_25, ALFABETO_26
-from fitness import calcola_fitness
+import time
+from crypto import vigenere_decrypt_fast, text_to_indices, Alphabet
+from keys_generator import generate_key_indices, count_keys
+from fitness import calculate_fitness
+from topology import generate_all_topologies
 
-CAPACITA_HEAP = 20
+CIPHERTEXT = "YENSZNUMGLNYYRFVHENMZFZZFDHZVTQHAKXFPKCZPJITSMRYKVSTVOYNKTRRLUVP"
 
-def esegui_scansione(stringhe_topologiche):
-    """
-    Scansiona lo spazio di ricerca su moduli 25 e 26, chiavi da 2 a 5 lettere,
-    modalità add e sub, mantenendo i migliori 20 risultati in un min-heap.
-    """
-    migliori_risultati = []  # Struttura min-heap: (fitness, dati_risultato)
+def run_analysis():
+    topologies = list(generate_all_topologies(CIPHERTEXT))
+    modulos = [25, 26]
+    modes = ['sub', 'add']
+    
+    top_results = [] # max heap (using negative score for heapq? No, python heapq is min-heap, so we keep the top N items. If score is higher than min, we pop and push.)
+    MAX_RESULTS = 20
+    
+    print(f"Starting analysis on {len(topologies)} topologies.")
+    
+    start_time = time.time()
+    
+    for topo_name, permuted_text in topologies:
+        print(f"\nEvaluating topology: {topo_name} -> {permuted_text}")
+        
+        for modulo in modulos:
+            print(f"  Modulo: {modulo}")
+            key_count = count_keys(modulo, min_len=2, max_len=5)
+            
+            # Pre-translate the permuted ciphertext to indices
+            ciphertext_indices = text_to_indices(permuted_text, modulo)
+            
+            for mode in modes:
+                print(f"    Mode: {mode}")
+                
+                keys_gen = generate_key_indices(modulo, min_len=2, max_len=5)
+                
+                # To quickly translate key indices back to string for the output
+                alphabet = Alphabet.get_alphabet(modulo)
+                
+                for i, key_indices in enumerate(keys_gen):
+                    
+                    if i > 0 and i % 2000000 == 0:
+                        elapsed = time.time() - start_time
+                        print(f"      Processed {i}/{key_count} keys... (Elapsed: {elapsed:.2f}s)")
+                        
+                    plaintext = vigenere_decrypt_fast(ciphertext_indices, key_indices, modulo, mode)
+                    score = calculate_fitness(plaintext)
+                    
+                    if score > 0:
+                        key_str = "".join(alphabet[idx] for idx in key_indices)
+                        
+                        if len(top_results) < MAX_RESULTS:
+                            heapq.heappush(top_results, (score, plaintext, key_str, topo_name, modulo, mode))
+                        elif score > top_results[0][0]:
+                            heapq.heappushpop(top_results, (score, plaintext, key_str, topo_name, modulo, mode))
+                            
+    end_time = time.time()
+    print(f"\nAnalysis completed in {end_time - start_time:.2f} seconds.")
+    print("\n" + "="*50)
+    print("--- TOP RESULTS ---")
+    print("="*50)
+    
+    # Sort descending
+    sorted_results = sorted(top_results, key=lambda x: x[0], reverse=True)
+    for res in sorted_results:
+        score, plaintext, key_str, topo_name, modulo, mode = res
+        print(f"Score: {score}")
+        print(f"Key: {key_str} (Len {len(key_str)}) | Modulo: {modulo} | Mode: {mode} | Topology: {topo_name}")
+        print(f"Text: {plaintext}")
+        print("-" * 50)
 
-    for nome_topo, testo_cifrato in stringhe_topologiche.items():
-        for modulo in [25, 26]:
-            alfabeto = ALFABETO_25 if modulo == 25 else ALFABETO_26
-
-            # Generazione iterativa delle chiavi per lunghezze da 2 a 5
-            for lun in range(2, 6):
-                for chiave_tuple in product(alfabeto, repeat=lun):
-                    chiave = "".join(chiave_tuple)
-
-                    for modo in ["sub", "add"]:
-                        decifrato = decifra_segmento(testo_cifrato, chiave, modulo, modo)
-                        score = calcola_fitness(decifrato)
-
-                        # Gestione della coda di priorità
-                        if len(migliori_risultati) < CAPACITA_HEAP:
-                            heapq.heappush(migliori_risultati, (score, chiave, modulo, modo, nome_topo, decifrato))
-                        elif score > migliori_risultati[0][0]:
-                            heapq.heapreplace(migliori_risultati, (score, chiave, modulo, modo, nome_topo, decifrato))
-
-    return sorted(migliori_risultati, key=lambda x: x[0], reverse=True)
+if __name__ == "__main__":
+    run_analysis()

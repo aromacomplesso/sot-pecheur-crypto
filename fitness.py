@@ -1,38 +1,37 @@
-# Modulo: fitness.py
-# Funzione di plausibilità linguistica con ponderazione esponenziale
-
-# Bigrammi a frequenza dominante nel francese classico (incluso "AN")
-BIGRAMMI_FRANCESI = {
-    "ES", "EN", "OU", "DE", "TE", "ON", "SE", "LA", "LE", "RE",
-    "ME", "ER", "NE", "QU", "IT", "UR", "IS", "TI", "ST", "NT", "AN"
-}
-
-# Lessico contestuale del crittogramma e del patrimonio storico
-PAROLE_CHIAVE_CONTESTUALI = [
-    "CHATEAU", "ASMODEE", "PECHEUR", "POUSSIN", "PRIEURE",
-    "RENNES", "RHONE", "POISSON", "GRIL", "ARETE", "PEIGNE"
+FRENCH_WORDS = [
+    "LE", "LA", "UN", "ET", "EST", "QUE", "LES", "DES", "QUI", "DANS", "POUR", "UNE",
+    "SUR", "PAR", "PAS", "IL", "ELLE", "DU", "AU", "OU", "CE", "SE", "DE", "NE",
+    "EN", "ON", "SA", "SON", "SES", "CES", "AUX"
 ]
 
-def calcola_fitness(testo):
+CONTEXT_WORDS = [
+    "SOT", "PECHEUR", "POISSON", "RHONE", "GRIL", "ARETE", "ANGE", "PEIGNE",
+    "RENNES", "CHATEAU", "TRESOR", "GRAAL", "SION", "PRIEURE", "TEMPLE", 
+    "DAGOBERT", "MEROVINGIEN", "MARIE", "MADELEINE", "POUSSIN", "TENIERS", 
+    "ASMODEE", "BAPHOMET", "SATOR"
+]
+
+WORD_WEIGHTS = {}
+
+# Standard words get linear score based on length
+for w in FRENCH_WORDS:
+    WORD_WEIGHTS[w] = len(w) * 10
+
+# Contextual words get an exponential bonus based on their length to ensure they dominate the score
+for w in CONTEXT_WORDS:
+    WORD_WEIGHTS[w] = (2 ** len(w)) * 100
+
+# Convert to list of tuples for faster iteration in the hot loop
+SCORING_ITEMS = list(WORD_WEIGHTS.items())
+
+def calculate_fitness(text):
     """
-    Assegna un punteggio numerico oggettivo al testo decifrato.
-    Combina la morbidezza fonetica dei bigrammi con il balzo
-    esponenziale associato a parole compiute: (2 elevato a L) · 100.
+    Calculates the fitness score of a given plaintext.
+    The score multiplies the occurrences of each word by its weight.
     """
-    punteggio = 0.0
-
-    # Livello 1: Riconoscimento dei bigrammi con regolarizzazione additiva
-    for i in range(len(testo) - 1):
-        coppia = testo[i:i+2]
-        if coppia in BIGRAMMI_FRANCESI:
-            punteggio += 10.0
-        else:
-            punteggio += 0.05  # Costante infinitesima di smoothing di Laplace
-
-    # Livello 2: Riconoscimento lessicale con crescita esponenziale
-    for parola in PAROLE_CHIAVE_CONTESTUALI:
-        if parola in testo:
-            lunghezza = len(parola)
-            punteggio += (2 ** lunghezza) * 100
-
-    return punteggio
+    score = 0
+    for word, weight in SCORING_ITEMS:
+        c = text.count(word)
+        if c > 0:
+            score += c * weight
+    return score

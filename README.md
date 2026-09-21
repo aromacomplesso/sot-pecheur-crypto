@@ -16,20 +16,23 @@ L'ecosistema opera secondo una pipeline modulare sequenziale:
    - Calcolo dell'Indice di Coincidenza (IC) di William Friedman ($IC \approx 0{,}0417$), a riprova della natura polialfabetica del testo cifrato.
 
 2. **`topology.py`**:
-   - Modellazione della scacchiera ortogonale 8x8.
-   - Implementazione dell'algoritmo euristico di Warnsdorff (1823) per la generazione deterministica del Salto del Cavallo (*Knight's Tour*).
+   - Modellazione della scacchiera ortogonale 8x8 e della griglia perimetrale rettangolare 22x12.
+   - Implementazione dell'algoritmo euristico di Warnsdorff (1823) per la generazione deterministica del Salto del Cavallo (*Knight's Tour*) e percorsi perimetrali geometrici.
 
 3. **`crypto.py`**:
    - Motore algebrico modulare ciclico.
-   - Supporto simultaneo per **Modulo 25** (filologia ottocentesca francese con omissione della lettera *W*) e **Modulo 26** (moderno).
+   - Supporto simultaneo per **Modulo 25** (filologia ottocentesca francese con omissione filologica della lettera *W*) e **Modulo 26** (moderno).
    - Modalità di decifrazione sottrattiva (Vigenère) e additiva/reciproca (Beaufort).
 
 4. **`fitness.py`**:
    - Funzione di valutazione statistica e plausibilità lessicale.
-   - Livello 1: Riconoscimento dei 21 bigrammi ad alta frequenza nel francese classico con regolarizzazione additiva di Laplace ($\epsilon = 0{,}05$).
-   - Livello 2: Ponderazione esponenziale per lessemi contestuali legati a Rennes-le-Château ($(2^L) \cdot 100$).
+   - Livello 1: Riconoscimento lineare delle particelle grammaticali e parole comuni del francese (`lunghezza × 10`).
+   - Livello 2: Ponderazione esponenziale per lessemi contestuali legati a Rennes-le-Château (`(2^L) × 100`).
 
-5. **`main.py`**:
+5. **`keys_generator.py`**:
+   - Generatore combinatorio efficiente degli indici numerici delle chiavi alfabetiche (da 2 a 5 caratteri) per Modulo 25 e 26.
+
+6. **`main.py`**:
    - Orchestratore della setacciatura combinatoria (fino a 495 milioni di combinazioni).
    - Gestione della memoria tramite coda di priorità *min-heap* (`heapq`) per il salvataggio dei migliori 20 risultati.
 
